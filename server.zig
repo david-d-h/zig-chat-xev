@@ -1,8 +1,8 @@
 const std = @import("std");
 const c_allocator = std.heap.c_allocator;
 
-inline fn malloc(nbytes: usize) !*[nbytes]u8 {
-    return c_allocator.alloc(u8, nbytes);
+inline fn malloc(nbytes: usize) []u8 {
+    return c_allocator.alloc(u8, nbytes) catch @panic("OOM");
 }
 
 inline fn mcreate(comptime T: type) !*T {
@@ -17,11 +17,17 @@ inline fn free(mem: anytype) void {
     c_allocator.destroy(mem);
 }
 
+inline fn freeM(mem: anytype) void {
+    c_allocator.free(mem);
+}
+
 const xev = @import("xev");
 
 const address: std.net.Address = .initIp4([4]u8{ 127, 0, 0, 1 }, 8080);
 
 const default_backlog: u31 = 128;
+
+const _ = xev.available() or @compileError("can't run this application on the current platform");
 
 pub fn main() !void {
     _ = xev.available() or @panic("can't run this application on the current platform");
@@ -92,8 +98,12 @@ fn readLoopCallback(
     };
 
     const content = rBufferAsSlice(&buffer, n_read);
-    justWrite(content, loop, client);
 
+    const alloc = malloc(content.len);
+    for (content, 0..) |byte, i| alloc[i] = byte;
+    justWrite(alloc, loop, client);
+
+    context.r_buffer = .{0} ** 1024;
     return .rearm;
 }
 
@@ -131,9 +141,12 @@ fn justWrite(
             // SAFETY: the buffer is guaranteed to be the user provided content,
             //         so we can ignore the lifetime of &buffer since we are now
             //         dealing with user provided data.
-            if (length <= n_written)
+            if (length < n_written) {
                 justWrite(data[n_written..length], innerLoop, innerClient);
+                return .disarm;
+            }
 
+            freeM(data);
             return .disarm;
         }
     }).callback);
