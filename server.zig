@@ -63,10 +63,7 @@ fn closeCallback(
     return .disarm;
 }
 
-const Ctx = struct {
-    r_buffer: [1024]u8 = .{0} ** 1024,
-    w_queue: xev.WriteQueue,
-};
+const Ctx = struct { r_buffer: [1024]u8 = .{0} ** 1024 };
 
 fn handleClient(loop: *xev.Loop, client: xev.TCP) void {
     const context = mcreateOrPanic(Ctx);
