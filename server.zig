@@ -98,12 +98,8 @@ fn readLoopCallback(
     };
 
     const content = rBufferAsSlice(&buffer, n_read);
+    justWrite(content, loop, client);
 
-    const alloc = malloc(content.len);
-    for (content, 0..) |byte, i| alloc[i] = byte;
-    justWrite(alloc, loop, client);
-
-    context.r_buffer = .{0} ** 1024;
     return .rearm;
 }
 
@@ -146,7 +142,6 @@ fn justWrite(
                 return .disarm;
             }
 
-            freeM(data);
             return .disarm;
         }
     }).callback);
