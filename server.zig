@@ -141,7 +141,7 @@ fn justWrite(
             // SAFETY: the buffer is guaranteed to be the user provided content,
             //         so we can ignore the lifetime of &buffer since we are now
             //         dealing with user provided data.
-            if (length < n_written) {
+            if (length > n_written) {
                 justWrite(data[n_written..length], innerLoop, innerClient);
                 return .disarm;
             }
